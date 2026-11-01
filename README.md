@@ -81,8 +81,13 @@ From runs in a 4-core Claude Code cloud container (see `results/`).
 80/100 imagined games of 200 steps matched the real rules at every frame (171 steps on average
 before the first mistake). Every first mistake was at a **serve**: the ball imagined a column or
 two away from the two middle serve columns. Paddles, bounces, hits and misses had no first
-mistakes. The fix in the code now: **coordinate input channels**, since small convolution
-filters can't tell absolute position. Re-run pending. GIF: `results/paddle_v1_dream.gif`.
+mistakes. The fix: **coordinate input channels**, since small convolution filters can't tell
+absolute position. GIF: `results/paddle_v1_dream.gif`.
+
+**Paddle game with coordinate inputs** (50 min, 9.9k steps): **99/100** imagined 200-step games
+matched the real rules at every frame (198 steps on average before the first mistake). These games
+had fewer points (47 against 131), so per serve: about 87% of serves right before, about 98% now.
+GIF: `results/paddle_v2_dream.gif`.
 
 **Chess rules, first run** (40 min, 5.1k steps): the model learned how pieces move, but not yet
 the rules that need whole-board reasoning. Exactly-right next positions by move kind: check 84%,
