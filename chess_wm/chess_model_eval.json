@@ -1,0 +1,39 @@
+{
+ "move_accuracy": {
+  "quiet move": [
+   11544,
+   19621
+  ],
+  "illegal attempt": [
+   1467,
+   3960
+  ],
+  "capture": [
+   1405,
+   3189
+  ],
+  "check": [
+   940,
+   1113
+  ],
+  "promotion": [
+   48,
+   163
+  ],
+  "castling": [
+   47,
+   71
+  ],
+  "en passant": [
+   4,
+   35
+  ],
+  "checkmate": [
+   2,
+   16
+  ]
+ },
+ "dreams_clean": 0,
+ "dreams": 100,
+ "moves_before_mistake": 4.72
+}

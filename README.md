@@ -84,4 +84,11 @@ two away from the two middle serve columns. Paddles, bounces, hits and misses ha
 mistakes. The fix in the code now: **coordinate input channels**, since small convolution
 filters can't tell absolute position. Re-run pending. GIF: `results/paddle_v1_dream.gif`.
 
-**Chess rules:** pending.
+**Chess rules, first run** (40 min, 5.1k steps): the model learned how pieces move, but not yet
+the rules that need whole-board reasoning. Exactly-right next positions by move kind: check 84%,
+castling 66%, quiet move 59%, capture 44%, illegal attempt 37%, promotion 29%, checkmate 13%,
+en passant 11%; 0/100 imagined games were fully correct (first mistake after 5 moves on average).
+Of the wrong cells, 1628 were the **check/mate status** (is the king attacked after the move?),
+705 the moved piece and 351 the turn (both: was the move **legal**?); castling rights, en passant
+and untouched squares were almost always right. Next: longer training (the loss was still falling)
+and more emphasis on check and legality. Results: `results/chess_v1_*`.
