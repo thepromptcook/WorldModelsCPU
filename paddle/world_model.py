@@ -45,7 +45,11 @@ class Block(nn.Module):
 class PaddleWorldModel(nn.Module):
     def __init__(self, w=64, depth=6):
         super().__init__()
-        self.inp = nn.Conv2d(K * N_CLASSES + N_CLASSES + 1 + 2 * N_ACTIONS, w, 3, padding=1)
+        self.inp = nn.Conv2d(K * N_CLASSES + N_CLASSES + 1 + 2 * N_ACTIONS + 2, w, 3, padding=1)
+        # Coordinate channels (CoordConv): local filters can't tell where on the board they are,
+        # but rules like 'serves appear in the two middle columns' depend on absolute position.
+        ys, xs = torch.meshgrid(torch.linspace(-1, 1, H), torch.linspace(-1, 1, W), indexing="ij")
+        self.register_buffer("coords", torch.stack([ys, xs])[None], persistent=False)
         self.blocks = nn.Sequential(*[Block(w) for _ in range(depth)])
         self.out = nn.Sequential(nn.GroupNorm(8, w), nn.GELU(), nn.Conv2d(w, N_CLASSES, 1))
 
@@ -55,7 +59,8 @@ class PaddleWorldModel(nn.Module):
         h = F.one_hot(hist, N_CLASSES).permute(0, 1, 4, 2, 3).reshape(B, K * N_CLASSES, H, W)
         p = F.one_hot(partial, N_CLASSES + 1).permute(0, 3, 1, 2)
         a = F.one_hot(actions, N_ACTIONS).reshape(B, 2 * N_ACTIONS)[..., None, None].expand(B, 2 * N_ACTIONS, H, W)
-        return self.out(self.blocks(self.inp(torch.cat([h, p, a], 1).float())))
+        xy = self.coords.expand(B, -1, -1, -1)
+        return self.out(self.blocks(self.inp(torch.cat([h.float(), p.float(), a.float(), xy], 1))))
 
     @torch.no_grad()
     def generate(self, hist, actions, gen=None, top_p=0.95, commit_above=0.999):
@@ -192,7 +197,16 @@ def train(minutes, episodes, batch=64, out="paddle_model.pt"):
     print(f"{len(acts)} recorded steps ({int(rare.sum())} hits/misses/serves) in {time.time() - t_data:.0f}s, "
           f"model has {sum(p.numel() for p in model.parameters()):,} parameters", flush=True)
     opt = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=0.01)
+    # Resumable: a checkpoint every 250 steps; after a container restart, the same command continues.
+    ckpt = out.replace(".pt", "_resume.pt")
     t0, s = time.time(), 0
+    if os.path.exists(ckpt):
+        st = torch.load(ckpt)
+        model.load_state_dict(st["model"])
+        ema.load_state_dict(st["ema"])
+        opt.load_state_dict(st["opt"])
+        prio, s, t0 = st["prio"], st["step"], t0 - st["elapsed"]
+        print(f"resuming from step {s} ({st['elapsed']:.0f}s of the budget used)", flush=True)
     while (progress := (time.time() - t0) / (60 * minutes)) < 1:
         s += 1
         lr, beta1 = one_cycle(progress)
@@ -228,7 +242,12 @@ def train(minutes, episodes, batch=64, out="paddle_model.pt"):
         if s % 250 == 0:
             print(f"step {s}  loss {loss.item():.4f}  lr {lr:.1e}  {time.time() - t0:.0f}s", flush=True)
             torch.save(ema.state_dict(), out)
+            torch.save({"model": model.state_dict(), "ema": ema.state_dict(), "opt": opt.state_dict(),
+                        "prio": prio, "step": s, "elapsed": time.time() - t0}, ckpt + ".tmp")
+            os.replace(ckpt + ".tmp", ckpt)
     torch.save(ema.state_dict(), out)
+    if os.path.exists(ckpt):
+        os.remove(ckpt)
     print(f"done: {s} steps in {time.time() - t0:.0f}s, saved {out}", flush=True)
     return ema
 

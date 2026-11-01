@@ -11,6 +11,9 @@ Small world models (paddle game, chess rules) trained from scratch on a CPU. No 
 - Long runs: start them in the background with `THREADS=n` and `--minutes M` (a time budget, so the
   learning-rate schedule finishes on time). Two runs in parallel each get half the CPU. Keep
   `THREADS` × runs ≤ cores.
+- Cloud containers can restart during long waits and kill running jobs. Training is resumable:
+  re-run the same `train` command and it continues from `<out>_resume.pt` (deleted when a run
+  finishes). Start long runs as tracked background tasks and check the log after any restart.
 - bfloat16 autocast is used for training; check `grep amx /proc/cpuinfo` on a new machine (without
   AMX/AVX512-BF16 it can be slower than float32).
 - Don't commit `*.pt`, GIFs or PNGs outside `results/`.

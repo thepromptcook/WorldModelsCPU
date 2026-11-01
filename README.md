@@ -68,7 +68,20 @@ an exact symmetry of the real game.
 - **Whole-board rules need whole-board reasoning.** "Has the random object appeared anywhere
   yet?" needs max pooling or attention; averaging hides a single cell.
 - **Rare moments decide accuracy.** Most mistakes happen at rare events, so oversample them.
+- **Rules tied to a place need coordinates.** Convolutions only see local patterns; add row and
+  column input channels when the rules depend on where something is.
+- **Containers restart.** Training saves a resume checkpoint every 250 steps; re-running the same
+  command continues from it (the time budget counts only training time already done).
 
 ## Results
 
-Filled in from the runs in this container (see `results/`).
+From runs in a 4-core Claude Code cloud container (see `results/`).
+
+**Paddle game, first run** (50 min, 8.8k steps, before coordinate inputs were added):
+80/100 imagined games of 200 steps matched the real rules at every frame (171 steps on average
+before the first mistake). Every first mistake was at a **serve**: the ball imagined a column or
+two away from the two middle serve columns. Paddles, bounces, hits and misses had no first
+mistakes. The fix in the code now: **coordinate input channels**, since small convolution
+filters can't tell absolute position. Re-run pending. GIF: `results/paddle_v1_dream.gif`.
+
+**Chess rules:** pending.

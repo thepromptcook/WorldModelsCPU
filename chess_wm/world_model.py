@@ -150,7 +150,16 @@ def train(minutes, n_games, batch=128, out="chess_model.pt"):
     print(f"{len(acts)} recorded move attempts ({int(special.sum())} special) in {time.time() - t_data:.0f}s, "
           f"model has {sum(p.numel() for p in model.parameters()):,} parameters", flush=True)
     opt = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.01)
+    # Resumable: a checkpoint every 250 steps; after a container restart, the same command continues.
+    ckpt = out.replace(".pt", "_resume.pt")
     t0, s = time.time(), 0
+    if os.path.exists(ckpt):
+        st = torch.load(ckpt)
+        model.load_state_dict(st["model"])
+        ema.load_state_dict(st["ema"])
+        opt.load_state_dict(st["opt"])
+        prio, s, t0 = st["prio"], st["step"], t0 - st["elapsed"]
+        print(f"resuming from step {s} ({st['elapsed']:.0f}s of the budget used)", flush=True)
     while (progress := (time.time() - t0) / (60 * minutes)) < 1:
         s += 1
         lr, beta1 = one_cycle(progress)
@@ -183,7 +192,12 @@ def train(minutes, n_games, batch=128, out="chess_model.pt"):
         if s % 250 == 0:
             print(f"step {s}  loss {loss.item():.4f}  lr {lr:.1e}  {time.time() - t0:.0f}s", flush=True)
             torch.save(ema.state_dict(), out)
+            torch.save({"model": model.state_dict(), "ema": ema.state_dict(), "opt": opt.state_dict(),
+                        "prio": prio, "step": s, "elapsed": time.time() - t0}, ckpt + ".tmp")
+            os.replace(ckpt + ".tmp", ckpt)
     torch.save(ema.state_dict(), out)
+    if os.path.exists(ckpt):
+        os.remove(ckpt)
     print(f"done: {s} steps in {time.time() - t0:.0f}s, saved {out}", flush=True)
     return ema
 
