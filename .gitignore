@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pt
+*.gif
+*.png
+!results/*.gif
+!results/*.png
